@@ -17,6 +17,9 @@ BALL_HEIGHT = 5
 INVADER_HEIGHT = 26
 INVADER_LENGTH = 30
 
+TTTLENGTH = 100
+
+INVADER_GAP_HORIZONTAL = 30
 INVADER_GAP = 12
 
 BULLET_LENGTH = 2
@@ -30,13 +33,11 @@ variables = [SPEED]
 bullets = []
 invaders = []
 
-# LOSE = pygame.mixer.Sound("mixkit-player-losing-or-failing-2042.wav")
-# SHOOT = pygame.mixer.Sound("mixkit-video-game-retro-click-237.wav")
-# pygame.mixer.music.load('music.wav')
-# pygame.mixer.music.play(-1)
-# HIT = pygame.mixer.Sound("mixkit-fast-game-explosion-1688.wav")
-
 pygame.init()
+
+pygame.mixer.music.load('music.wav')
+pygame.mixer.music.set_volume(1.0)
+pygame.mixer.music.play(-1)
 
 font = pygame.font.Font('freesansbold.ttf', 14)
 
@@ -48,9 +49,9 @@ def createBullet(x, y, screen, team):
 	bullets.append(Bullet(x, y, screen, target))
 
 def resetInvaders():
-	for i in range(10):
-		for j in range(6):
-			invaders.append(Invader(10 + i * (INVADER_GAP + INVADER_LENGTH), 0 + j * (INVADER_GAP + INVADER_HEIGHT), screen, variables))
+	for i in range(8):
+		for j in range(5):
+			invaders.append(Invader(10 + i * (INVADER_GAP_HORIZONTAL + INVADER_LENGTH), 0 + j * (INVADER_GAP + INVADER_HEIGHT), screen, variables))
 
 
 class Bullet(pygame.sprite.Sprite):
@@ -74,11 +75,9 @@ class Bullet(pygame.sprite.Sprite):
 			if type(self.target) == list:
 				for i in self.target:
 					if self.x > i.x - BULLET_LENGTH and self.x < i.x + INVADER_LENGTH and self.y + BULLET_HEIGHT > i.y and self.y < i.y + INVADER_HEIGHT:
-						# pygame.mixer.Sound.play(HIT)
 						return i
 			else:
 				if self.x > self.target.x - BULLET_LENGTH and self.x < self.target.x + DEFENDER_LENGTH and self.y + BULLET_HEIGHT > self.target.y and self.y < self.target.y + DEFENDER_HEIGHT:
-					# pygame.mixer.Sound.play(HIT)
 					self.target.lives -= 1
 					return 1
 			self.screen.blit(self.surf, (self.x, self.y))
@@ -97,8 +96,6 @@ class Invader(Character):
 		self.team = 2
 		self.img = pygame.image.load("invader.jpg")
 		self.img = pygame.transform.rotozoom(self.img, 0, 0.175)
-		# self.surf = pygame.Surface((INVADER_LENGTH, INVADER_HEIGHT))
-		# self.surf.fill((255, 255, 255))
 		self.variables = variables
 		self.prev = 1
     
@@ -111,7 +108,6 @@ class Invader(Character):
 			self.y = self.y + INVADER_HEIGHT + INVADER_GAP
 		self.prev = self.variables[0]
 		self.screen.blit(self.img, (self.x, self.y))
-		# self.screen.blit(self.surf, (self.x, self.y))
 		if self.y > 400:
 			return 1
 
@@ -135,7 +131,6 @@ class Defender(Character):
 			if self.x > WIDTH - DEFENDER_LENGTH:
 				self.x = WIDTH - DEFENDER_LENGTH
 		if pressed_keys[K_SPACE] and time.time() - self.time > 0.40:
-			# pygame.mixer.Sound.play(SHOOT)
 			createBullet(self.x + DEFENDER_LENGTH / 2, self.y + DEFENDER_HEIGHT - BULLET_HEIGHT, self.screen, self.team)
 			self.time = time.time()
 		self.screen.blit(self.surf, (self.x, self.y))
@@ -161,34 +156,121 @@ class PongPlayer():
         self.screen = screen
         self.surf = pygame.Surface((PONG_WIDTH, PONG_HEIGHT))
         self.surf.fill((255, 255, 255))
-    def update(self, pressed_keys):
-        if pressed_keys[K_UP]:
-            self.y = self.y - 5
-            if self.y < 0:
-            	self.y = 0
-        if pressed_keys[K_DOWN]:
-            self.y = self.y + 5
-            if self.y > HEIGHT - PONG_HEIGHT:
-                self.y = HEIGHT - PONG_HEIGHT
+        self.lives = 3
+    def update(self, pressed_keys, AI = False):
+        if AI:
+            self.y = AI.y - PONG_HEIGHT // 2
+        else:
+            if pressed_keys[K_UP]:
+                self.y = self.y - 5
+            if pressed_keys[K_DOWN]:
+                self.y = self.y + 5
+        if self.y < 0:
+            self.y = 0
+        if self.y > HEIGHT - PONG_HEIGHT:
+            self.y = HEIGHT - PONG_HEIGHT
         self.screen.blit(self.surf, (self.x, self.y))
 
 class PongBall():
-    def __init__(self, x, y, screen):
+    def __init__(self, screen):
         self.x = WIDTH // 2
-        self.y = y
+        self.y = HEIGHT // 2
+        self.xSpeed = (random.random() + 0.5) * (1 if random.random() < 0.5 else -1)
+        self.ySpeed = random.random() - 0.5 * 2
         self.screen = screen
-        self.surf = pygame.Surface((PONG_WIDTH, PONG_HEIGHT))
+        self.surf = pygame.Surface((BALL_WIDTH, BALL_HEIGHT))
         self.surf.fill((255, 255, 255))
-    def update(self, pressed_keys):
-        if pressed_keys[K_UP]:
-            self.y = self.y - 5
-            if self.y < 0:
-            	self.y = 0
-        if pressed_keys[K_DOWN]:
-            self.y = self.y + 5
-            if self.y > HEIGHT - PONG_HEIGHT:
-                self.y = HEIGHT - PONG_HEIGHT
+    def update(self, p1, p2):
+        self.x = self.x + self.xSpeed
+        self.y = self.y + self.ySpeed
+        if self.y < 0:
+            self.y = 0
+            self.ySpeed = -1 * self.ySpeed
+        if self.y > HEIGHT - BALL_HEIGHT:
+            self.y = HEIGHT - BALL_HEIGHT
+            self.ySpeed = -1 * self.ySpeed
+        if self.x <= p1.x + PONG_WIDTH and self.x >= p1.x and self.y >= p1.y and self.y <= p1.y + PONG_HEIGHT:
+            self.xSpeed = -1 * self.xSpeed
+            if abs(self.xSpeed) < 10:
+                self.xSpeed *= 1.2
+        if self.x <= p2.x + PONG_WIDTH and self.x + BALL_WIDTH >= p2.x and self.y >= p2.y and self.y <= p2.y + PONG_HEIGHT:
+            self.xSpeed = -1 * self.xSpeed
+            if abs(self.xSpeed) < 10:
+                self.xSpeed *= 1.2
+        if self.x < 0:
+            return 1
+        if self.x > WIDTH:
+            return 2
         self.screen.blit(self.surf, (self.x, self.y))
+
+class C4Board():
+    def __init__(self, screen):
+        self.screen = screen
+
+class TTTBoard():
+    def __init__(self, screen):
+        self.screen = screen
+        self.squares = [0 for i in range(9)]
+        self.surfs = [Line(WIDTH // 2 - TTTLENGTH / 2, HEIGHT // 2, 1, TTTLENGTH * 3), Line(WIDTH // 2 + TTTLENGTH / 2, HEIGHT // 2, 1, TTTLENGTH * 3), Line(WIDTH // 2, HEIGHT // 2 - TTTLENGTH / 2, TTTLENGTH * 3, 1), Line(WIDTH // 2, HEIGHT // 2 + TTTLENGTH / 2, TTTLENGTH * 3, 1)]
+        self.turn = 1
+        self.time = -1
+
+    def update(self):
+        for i in range(3):
+            if self.squares[i] != 0 and self.squares[i] == self.squares[i + 3] and self.squares[i] == self.squares[i + 6]:
+                return self.squares[i]
+            if self.squares[3 * i] != 0 and self.squares[3 * i] == self.squares[3 * i + 1] and self.squares[3 * i] == self.squares[3 * i + 2]:
+                return self.squares[i * 3]
+        if self.squares[4] != 0 and ((self.squares[0] == self.squares[4] and self.squares[4] == self.squares[8]) or (self.squares[2] == self.squares[4] and self.squares[4] == self.squares[6])):
+            return self.squares[4]
+        flag = True
+        for i in range(9):
+            if not self.squares[i]:
+                flag = False
+        if flag:
+            return 3
+        for i in self.surfs:
+            surf = pygame.Surface((i.width, i.height))
+            surf.fill((255, 255, 255))
+            rect = surf.get_rect(center = (i.x, i.y))
+            screen.blit(surf, rect)
+        for i in range(9):
+            if self.squares[i]:
+                if self.squares[i] == 1:
+                    pygame.draw.line(self.screen, (0, 255, 255), (WIDTH // 2 + TTTLENGTH * (i % 3 - 1) - 35, HEIGHT // 2 + TTTLENGTH * (i // 3 - 1) - 35), (WIDTH // 2 + TTTLENGTH * (i % 3 - 1) + 35, HEIGHT // 2 + TTTLENGTH * (i // 3 - 1) + 35))
+                    pygame.draw.line(self.screen, (0, 255, 255), (WIDTH // 2 + TTTLENGTH * (i % 3 - 1) + 35, HEIGHT // 2 + TTTLENGTH * (i // 3 - 1) - 35), (WIDTH // 2 + TTTLENGTH * (i % 3 - 1) - 35, HEIGHT // 2 + TTTLENGTH * (i // 3 - 1) + 35))
+                elif self.squares[i] == 2:
+                    pygame.draw.circle(self.screen, (255, 0, 0), (WIDTH // 2 + TTTLENGTH * (i % 3 - 1), HEIGHT // 2 + TTTLENGTH * (i // 3 - 1)), 35, 1)
+        if pygame.mouse.get_pressed()[0]:
+            mousePos = pygame.mouse.get_pos()
+            row = -1
+            column = -1
+            if mousePos[0] < WIDTH // 2 - TTTLENGTH / 2 and mousePos[0] > WIDTH // 2 - 3 * TTTLENGTH / 2:
+                column = 0
+            if mousePos[0] < WIDTH // 2 + TTTLENGTH / 2 and mousePos[0] > WIDTH // 2 - TTTLENGTH / 2:
+                column = 1
+            if mousePos[0] > WIDTH // 2 + TTTLENGTH / 2 and mousePos[0] < WIDTH // 2 + 3 * TTTLENGTH / 2:
+                column = 2
+            if mousePos[1] < HEIGHT // 2 - TTTLENGTH / 2 and mousePos[1] > HEIGHT // 2 - 3 * TTTLENGTH / 2:
+                row = 0
+            if mousePos[1] < HEIGHT // 2 + TTTLENGTH / 2 and mousePos[1] > HEIGHT // 2 - TTTLENGTH / 2:
+                row = 1
+            if mousePos[1] > HEIGHT // 2 + TTTLENGTH / 2 and mousePos[1] < HEIGHT // 2 + 3 * TTTLENGTH / 2:
+                row = 2
+            if row != -1 and column != -1:
+                if not self.squares[3 * row + column]:
+                    self.squares[3 * row + column] = self.turn
+                    if self.turn == 1:
+                        self.turn = 2
+                    else:
+                        self.turn = 1
+
+class Line():
+    def __init__(self, x, y, width, height):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
 
 class Button():
     def __init__(self, x, y, width, height, name):
@@ -213,26 +295,55 @@ class Button():
         screen.blit(surf, rect)
         screen.blit(text, textRect)
 
+class RPSButton():
+    def __init__(self, screen, x, y, symbol, width = 150, height = 100):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.symbol = symbol
+        self.screen = screen
+    def update(self):
+        mousePos = pygame.mouse.get_pos()
+        if pygame.mouse.get_pressed()[0] and mousePos[0] >= self.x - self.width / 2 and mousePos[0] <= self.x + self.width / 2 and mousePos[1] >= self.y - self.height / 2 and mousePos[1] <= self.y + self.height / 2:
+            return self.symbol
+        surf = pygame.Surface((self.width, self.height))
+        surf.fill((255, 255, 255))
+        rect = surf.get_rect(center = (self.x, self.y))
+        text = font.render(self.symbol, True, (0, 0, 0))
+        textRect = text.get_rect(center = (self.x, self.y))
+        self.screen.blit(surf, rect)
+        self.screen.blit(text, textRect)
+
 
 fps = 60
 fpsClock = pygame.time.Clock()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 buttons = []
-buttonNames = ["Library", "Minesweeper", "Tic Tac Toe", "Pong", "Rock Paper Scissors", "Space Invaders", "Snake"]
+buttonNames = ["Library", "Rock Paper Scissors", "Tic Tac Toe", "Pong", "Connect 4", "Space Invaders", "Snake"]
 running = buttonNames[0]
 buttons.append(Button(60, 15, 100, 20, buttonNames[0]))
+pongGameOver = False
 for i in range(3):
     for j in range(2):
         buttons.append(Button(175 + 225 * i, 135 + 180 * j, 150, 120, buttonNames[1 + i * 2 + j]))
 score = 0
 player = Defender(30, 400, screen)
 gameOver = False
+board = TTTBoard(screen)
 
-p1 = PongPlayer(760, 220, screen)
-p2 = PongPlayer(40, 220, screen)
+RPSSymbols = ["Rock", "Paper", "Scissors"]
+RPSButtons = [RPSButton(screen, 175 + i * (95 + 150), HEIGHT // 2, RPSSymbols[i]) for i in range(3)]
+
+TTTGameOver = False
+
+p1 = PongPlayer(40, 220, screen)
+p2 = PongPlayer(760, 220, screen)
+pongBall = PongBall(screen)
+
+RPSGameOver = False
 
 
-prerunning = running
 while running:
     pygame.draw.rect(screen, (0, 0, 0), (0, 0, WIDTH, HEIGHT))
     pygame.display.set_caption(running)
@@ -252,15 +363,129 @@ while running:
         if buttons[0].update():
             running = buttonNames[0]
             continue
+        if running == buttonNames[1]:
+            if RPSGameOver:
+                if pygame.key.get_pressed()[K_r]:
+                    RPSGameOver = False
+                    RPSButtons = [RPSButton(screen, 175 + i * (95 + 150), HEIGHT // 2, RPSSymbols[i]) for i in range(3)]
+                    continue
+                
+                computerText = font.render(f'Computer chose {computer}', True, (0, 255, 0))
+                computerTextRect = computerText.get_rect()
+                computerTextRect.center = (WIDTH // 2, HEIGHT // 2 - 120)
+                screen.blit(computerText, computerTextRect)
+                
+                playerText = font.render(f'You chose {RPSGameOver}', True, (0, 255, 0))
+                playerTextRect = playerText.get_rect()
+                playerTextRect.center = (WIDTH // 2, HEIGHT // 2 - 80)
+                screen.blit(playerText, playerTextRect)
+
+                if (computer == "Rock" and RPSGameOver == "Scissors") or (computer == "Paper" and RPSGameOver == "Rock") or (computer == "Scissors" and RPSGameOver == "Paper"):
+                    winner = "Computer"
+                elif (RPSGameOver == "Rock" and computer == "Scissors") or (RPSGameOver == "Paper" and computer == "Rock") or (RPSGameOver == "Scissors" and computer == "Paper"):
+                    winner = "Player"
+                else:
+                    winner = None
+                if winner:
+                    gameOverText = font.render(f'{winner} Won', True, (0, 255, 0))
+                else:
+                    gameOverText = font.render(f'There was a Tie', True, (0, 255, 0))
+                gameOverTextRect = gameOverText.get_rect()
+                gameOverTextRect.center = (WIDTH // 2, HEIGHT // 2 - 40)
+                screen.blit(gameOverText, gameOverTextRect)
+
+                playAgainText = font.render(f'Press R to restart', True, (0, 255, 0))
+                playAgainTextRect = playAgainText.get_rect()
+                playAgainTextRect.center = (WIDTH // 2, HEIGHT // 2)
+                screen.blit(playAgainText, playAgainTextRect)
+
+                pygame.display.flip()
+                fpsClock.tick(fps)
+                continue
+
+            for i in RPSButtons:
+                RPSGameOver = i.update()
+                if RPSGameOver:
+                    break
+            computer = RPSSymbols[random.randint(0, 2)]
+            text = font.render(f'Computer Choice: {computer}', True, (0, 255, 0))
+            textRect = text.get_rect(midleft = (330, 300))
+            screen.blit(text, textRect)
+        if running == buttonNames[2]:
+            if TTTGameOver:
+                if pygame.key.get_pressed()[K_r]:
+                    TTTGameOver = False
+                    board = TTTBoard(screen)
+                    continue
+                if TTTGameOver == 3:
+                    gameOverText = font.render(f'There was a Tie', True, (0, 255, 0))
+                else:
+                    gameOverText = font.render(f'Player {TTTGameOver} Won', True, (0, 255, 0))
+                gameOverTextRect = gameOverText.get_rect()
+                gameOverTextRect.center = (WIDTH // 2, HEIGHT // 2 - 80)
+                screen.blit(gameOverText, gameOverTextRect)
+
+                playAgainText = font.render(f'Press R to restart', True, (0, 255, 0))
+                playAgainTextRect = playAgainText.get_rect()
+                playAgainTextRect.center = (WIDTH // 2, HEIGHT // 2 - 40)
+                screen.blit(playAgainText, playAgainTextRect)
+
+                pygame.display.flip()
+                fpsClock.tick(fps)
+                continue
+            TTTGameOver = board.update()
         if running == buttonNames[3]:
-            p1.update(pygame.key.get_pressed())
+            if pongGameOver:
+                if pygame.key.get_pressed()[K_r]:
+                    pongGameOver = False
+                    p1 = PongPlayer(40, 220, screen)
+                    p2 = PongPlayer(760, 220, screen)
+                    pongBall = PongBall(screen)
+                    continue
+
+                gameOverText = font.render(f'Player {pongGameOver} Won', True, (0, 255, 0))
+                gameOverTextRect = gameOverText.get_rect()
+                gameOverTextRect.center = (WIDTH // 2, HEIGHT // 2 - 80)
+                screen.blit(gameOverText, gameOverTextRect)
+
+                playAgainText = font.render(f'Press R to restart', True, (0, 255, 0))
+                playAgainTextRect = playAgainText.get_rect()
+                playAgainTextRect.center = (WIDTH // 2, HEIGHT // 2 - 40)
+                screen.blit(playAgainText, playAgainTextRect)
+
+                pygame.display.flip()
+                fpsClock.tick(fps)
+                continue
+
+            x = pongBall.update(p1, p2)
+            if x == 1:
+                p1.lives -= 1
+                pongBall = PongBall(screen)
+            if x == 2:
+                p2.lives -= 1
+                pongBall = PongBall(screen)
+            if p1.lives == 0:
+                pongGameOver = 2
+            if p2.lives == 0:
+                pongGameOver = 1
+            
+            lives1Text = font.render(f'Lives: {p1.lives}', True, (255, 0, 0))
+            lives1TextRect = lives1Text.get_rect()
+            lives1TextRect.midleft = (130, 15)
+            screen.blit(lives1Text, lives1TextRect)
+
+            lives2Text = font.render(f'Lives: {p2.lives}', True, (255, 0, 0))
+            lives2TextRect = lives2Text.get_rect()
+            lives2TextRect.midright = (780, 15)
+            screen.blit(lives2Text, lives2TextRect)
+            
+            p1.update(pygame.key.get_pressed(), pongBall)
             p2.update(pygame.key.get_pressed())
         if running == buttonNames[5]:
             if gameOver:
                 if pygame.key.get_pressed()[K_r]:
                     gameOver = False
                     score = 0
-                    newHighScore = False
                     invaders = []
                     bullets = []
                     player = Defender(30, 400, screen)
@@ -294,7 +519,6 @@ while running:
                 if x == 1:
                     lives = 0
                     gameOver = True
-                    # pygame.mixer.Sound.play(LOSE)
                     continue
                 elif x == 1000:
                     invaders.remove(i)
@@ -319,11 +543,9 @@ while running:
             screen.blit(livesText, livesTextRect)
             if player.lives == 0:
                 gameOver = True
-                # pygame.mixer.Sound.play(LOSE)
             player.update(pressed_keys)
 
         
-    prerunning = running
     pygame.display.flip()
     fpsClock.tick(fps)
 
