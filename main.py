@@ -35,9 +35,9 @@ invaders = []
 
 pygame.init()
 
-pygame.mixer.music.load('music.wav')
-pygame.mixer.music.set_volume(1.0)
-pygame.mixer.music.play(-1)
+# pygame.mixer.music.load('music.wav')
+# pygame.mixer.music.set_volume(1.0)
+# pygame.mixer.music.play(-1)
 
 font = pygame.font.Font('freesansbold.ttf', 14)
 
@@ -175,7 +175,7 @@ class PongBall():
     def __init__(self, screen):
         self.x = WIDTH // 2
         self.y = HEIGHT // 2
-        self.xSpeed = (random.random() + 0.5) * (1 if random.random() < 0.5 else -1)
+        self.xSpeed = 5#(random.random() + 0.5) * (1 if random.random() < 0.5 else -1)
         self.ySpeed = random.random() - 0.5 * 2
         self.screen = screen
         self.surf = pygame.Surface((BALL_WIDTH, BALL_HEIGHT))
@@ -206,6 +206,60 @@ class PongBall():
 class C4Board():
     def __init__(self, screen):
         self.screen = screen
+        self.places = [[0 for i in range(6)] for i in range(7)]
+        self.time = -1
+        self.turn = 1
+    
+    def update(self):
+        for i in range(7):
+            for j in range(3):
+                if self.places[i][j] != 0 and self.places[i][j] == self.places[i][j + 1] and self.places[i][j] == self.places[i][j + 2] and self.places[i][j] == self.places[i][j + 3]:
+                    return self.places[i][j]
+        for i in range(6):
+            for j in range(4):
+                if self.places[j][i] != 0 and self.places[j][i] == self.places[j + 1][i] and self.places[j][i] == self.places[j + 2][i] and self.places[j][i] == self.places[j + 3][i]:
+                    return self.places[j][i]
+        for i in range(4):
+            for j in range(3):
+                if self.places[i][j] != 0 and self.places[i][j] == self.places[i + 1][j + 1] and self.places[i][j] == self.places[i + 2][j + 2] and self.places[i][j] == self.places[i + 3][j + 3]:
+                    return self.places[i][j]
+                if self.places[6 - i][j] != 0 and self.places[6 - i][j] == self.places[5 - i][j + 1] and self.places[6 - i][j] == self.places[4 - i][j + 2] and self.places[6 - i][j] == self.places[3 - i][j + 3]:
+                    return self.places[6 - i][j]
+        
+        if self.time == -1:
+            self.time = time.time()
+        for i in range(8):
+            pygame.draw.line(self.screen, (255, 255, 255), (240 + i * 50, 50), (240 + i * 50, 350))
+            
+        for i in range(7):
+            pygame.draw.line(self.screen, (255, 255, 255), (240, 50 + i * 50), (590, 50 + i * 50))
+        
+        for i in range(7):
+            for j in range(6):
+                if self.places[i][j] == 1:
+                    pygame.draw.circle(self.screen, (255, 0, 0), (265 + 50 * i, 325 - 50 * j), 20)
+                if self.places[i][j] == 2:
+                    pygame.draw.circle(self.screen, (255, 255, 0), (265 + 50 * i, 325 - 50 * j), 20)
+
+        col = -1
+        pressed = pygame.mouse.get_pressed()[0]
+        mousePos = pygame.mouse.get_pos()[0]
+        if time.time() - self.time > 0.5:
+            for i in range(7):
+                if pressed and mousePos >= 240 + 50 * i and mousePos <= 290 + 50 * i:
+                    col = i
+                    break
+
+            if col != -1:
+                for i in range(6):
+                    if not self.places[col][i]:
+                        self.time = time.time()
+                        self.places[col][i] = self.turn
+                        self.turn = self.turn + 1
+                        if self.turn == 3:
+                            self.turn = 1
+                        return
+            
 
 class TTTBoard():
     def __init__(self, screen):
@@ -315,12 +369,68 @@ class RPSButton():
         self.screen.blit(surf, rect)
         self.screen.blit(text, textRect)
 
+class SnakeBoard():
+    def __init__(self, screen):
+        self.screen = screen
+    def update(self):
+        for i in range(41):
+            pygame.draw.line(self.screen, (255, 255, 255), (240 + i * 10, 25), (240 + i * 10, 415))
+            
+        for i in range(40):
+            pygame.draw.line(self.screen, (255, 255, 255), (240, 25 + i * 10), (640, 25 + i * 10))
+
+class Snake():
+    def __init__(self, screen):
+        self.screen = screen
+        self.snake = [Segment(3, 20, screen)]
+        self.direction = None
+    def update(self, pressed_keys):
+        if pressed_keys[K_RIGHT]:
+            self.direction = "right"
+        if pressed_keys[K_LEFT]:
+            self.direction = "left"
+        if pressed_keys[K_DOWN]:
+            self.direction = "down"
+        if pressed_keys[K_UP]:
+            self.direction = "up"
+        print(self.direction)
+
+        
+        for i in self.snake:
+            i.update(i.x, i.y)
+
+class Apple():
+    def __init__(self, screen):
+        self.screen = screen
+        self.x = 35
+        self.y = 20
+    def update(self, new = None):
+        if new:
+            self.x = random.randint(0, 39)
+            self.y = random.randint(0, 38)
+        surf = pygame.Surface((9, 9))
+        surf.fill((255, 95, 31))
+        rect = surf.get_rect(center = (self.x * 10 + 245, self.y * 10 + 30))
+        self.screen.blit(surf, rect)
+
+class Segment():
+    def __init__(self, x, y, screen):
+        self.x = x
+        self.y = y
+        self.screen = screen
+    def update(self, newX, newY):
+        self.x = newX
+        self.y = newY
+        surf = pygame.Surface((9, 9))
+        surf.fill((255, 0, 0))
+        rect = surf.get_rect(center = (self.x * 10 + 245, self.y * 10 + 30))
+        self.screen.blit(surf, rect)
 
 fps = 60
 fpsClock = pygame.time.Clock()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 buttons = []
-buttonNames = ["Library", "Rock Paper Scissors", "Tic Tac Toe", "Pong", "Connect 4", "Space Invaders", "Snake"]
+buttonNames = ["Library", "Rock Paper Scissors", "Tic Tac Toe", "Pong", "Snake", "Space Invaders", "Connect 4"]
 running = buttonNames[0]
 buttons.append(Button(60, 15, 100, 20, buttonNames[0]))
 pongGameOver = False
@@ -336,10 +446,17 @@ RPSSymbols = ["Rock", "Paper", "Scissors"]
 RPSButtons = [RPSButton(screen, 175 + i * (95 + 150), HEIGHT // 2, RPSSymbols[i]) for i in range(3)]
 
 TTTGameOver = False
+snakeBoard = SnakeBoard(screen)
+connect4 = C4Board(screen)
 
 p1 = PongPlayer(40, 220, screen)
 p2 = PongPlayer(760, 220, screen)
 pongBall = PongBall(screen)
+
+connect4Over = 0
+
+snakePlayer = Snake(screen)
+apple = Apple(screen)
 
 RPSGameOver = False
 
@@ -481,6 +598,11 @@ while running:
             
             p1.update(pygame.key.get_pressed(), pongBall)
             p2.update(pygame.key.get_pressed())
+        if running == buttonNames[4]:
+            pressed_keys = pygame.key.get_pressed()
+            snakeBoard.update()
+            snakePlayer.update(pressed_keys)
+            apple.update()
         if running == buttonNames[5]:
             if gameOver:
                 if pygame.key.get_pressed()[K_r]:
@@ -544,6 +666,27 @@ while running:
             if player.lives == 0:
                 gameOver = True
             player.update(pressed_keys)
+        if running == buttonNames[6]:
+            if connect4Over:
+                if pygame.key.get_pressed()[K_r]:
+                    connect4Over = 0
+                    connect4 = C4Board(screen)
+                    continue
+                gameOverText = font.render(f'Player {connect4Over} Won', True, (0, 255, 0))
+                gameOverTextRect = gameOverText.get_rect()
+                gameOverTextRect.center = (WIDTH // 2, HEIGHT // 2 - 80)
+                screen.blit(gameOverText, gameOverTextRect)
+
+                playAgainText = font.render(f'Press R to restart', True, (0, 255, 0))
+                playAgainTextRect = playAgainText.get_rect()
+                playAgainTextRect.center = (WIDTH // 2, HEIGHT // 2 - 40)
+                screen.blit(playAgainText, playAgainTextRect)
+
+                pygame.display.flip()
+                fpsClock.tick(fps)
+                continue
+
+            connect4Over = connect4.update()
 
         
     pygame.display.flip()
