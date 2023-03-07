@@ -333,12 +333,17 @@ class Line():
         self.height = height
 
 class Button():
-    def __init__(self, x, y, width, height, name):
+    def __init__(self, x, y, width, height, name, file = None):
         self.x = x
         self.y = y
         self.width = width
         self.height = height
         self.name = name
+        self.img = None
+        if file:
+            self.img = pygame.image.load(file)
+            self.img = pygame.transform.rotozoom(self.img, 0, 0.08)
+
     def update(self):
         mousePos = pygame.mouse.get_pos()
         if pygame.mouse.get_pressed()[0] and mousePos[0] >= self.x - self.width / 2 and mousePos[0] <= self.x + self.width / 2 and mousePos[1] >= self.y - self.height / 2 and mousePos[1] <= self.y + self.height / 2:
@@ -353,6 +358,9 @@ class Button():
             text = font.render(self.name, True, (0, 0, 0))
             textRect = text.get_rect(center = (self.x, self.y + 40))
         screen.blit(surf, rect)
+        if self.img:
+            imgRect = self.img.get_rect(center = (self.x, self.y - 15))
+            screen.blit(self.img, imgRect)
         screen.blit(text, textRect)
 
 class RPSButton():
@@ -461,12 +469,13 @@ fpsClock = pygame.time.Clock()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 buttons = []
 buttonNames = ["Library", "Rock Paper Scissors", "Tic Tac Toe", "Pong", "Snake", "Space Invaders", "Connect 4"]
+buttonFiles = [None, "RPS.png", "TTT.png", "Pong.png", "Snake.png", "SI.png", "C4.png"] 
 running = buttonNames[0]
 buttons.append(Button(60, 15, 100, 20, buttonNames[0]))
 pongGameOver = False
 for i in range(3):
     for j in range(2):
-        buttons.append(Button(175 + 225 * i, 135 + 180 * j, 150, 120, buttonNames[1 + i * 2 + j]))
+        buttons.append(Button(175 + 225 * i, 135 + 180 * j, 150, 120, buttonNames[1 + i * 2 + j], buttonFiles[i * 2 + j + 1]))
 score = 0
 player = Defender(30, 400, screen)
 gameOver = False
@@ -482,7 +491,7 @@ connect4 = C4Board(screen)
 p1 = PongPlayer(40, 220, screen, 1)
 p2 = PongPlayer(760, 220, screen, 2)
 pongBall = PongBall(screen)
-
+flag = False
 connect4Over = 0
 
 snakePlayer = Snake(screen)
@@ -587,8 +596,8 @@ while running:
             if pongGameOver:
                 if pygame.key.get_pressed()[K_r]:
                     pongGameOver = False
-                    p1 = PongPlayer(40, 220, screen)
-                    p2 = PongPlayer(760, 220, screen)
+                    p1 = PongPlayer(40, 220, screen, 1)
+                    p2 = PongPlayer(760, 220, screen, 2)
                     pongBall = PongBall(screen)
                     continue
 
@@ -656,7 +665,11 @@ while running:
                 pygame.display.flip()
                 fpsClock.tick(fps)
                 continue
+            if pygame.key.get_pressed()[K_SPACE]:
+                flag = True
             fps = 10
+            if flag:
+                fps = 1
             pressed_keys = pygame.key.get_pressed()
             snakeBoard.update()
             out = snakePlayer.update(pressed_keys, apple)
