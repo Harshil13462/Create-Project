@@ -150,16 +150,20 @@ class SuperInvader(Invader):
 			return 1
 
 class PongPlayer():
-    def __init__(self, x, y, screen):
+    def __init__(self, x, y, screen, player):
+        self.player = player
         self.x = x
         self.y = y
         self.screen = screen
         self.surf = pygame.Surface((PONG_WIDTH, PONG_HEIGHT))
         self.surf.fill((255, 255, 255))
         self.lives = 3
-    def update(self, pressed_keys, AI = False):
-        if AI:
-            self.y = AI.y - PONG_HEIGHT // 2
+    def update(self, pressed_keys):
+        if self.player == 1:
+            if pressed_keys[K_w]:
+                self.y = self.y - 5
+            if pressed_keys[K_s]:
+                self.y = self.y + 5
         else:
             if pressed_keys[K_UP]:
                 self.y = self.y - 5
@@ -175,7 +179,7 @@ class PongBall():
     def __init__(self, screen):
         self.x = WIDTH // 2
         self.y = HEIGHT // 2
-        self.xSpeed = 5#(random.random() + 0.5) * (1 if random.random() < 0.5 else -1)
+        self.xSpeed = (random.random() + 0.5) * (1 if random.random() < 0.5 else -1)
         self.ySpeed = random.random() - 0.5 * 2
         self.screen = screen
         self.surf = pygame.Surface((BALL_WIDTH, BALL_HEIGHT))
@@ -193,10 +197,12 @@ class PongBall():
             self.xSpeed = -1 * self.xSpeed
             if abs(self.xSpeed) < 10:
                 self.xSpeed *= 1.2
+                self.ySpeed *= 1.2
         if self.x <= p2.x + PONG_WIDTH and self.x + BALL_WIDTH >= p2.x and self.y >= p2.y and self.y <= p2.y + PONG_HEIGHT:
             self.xSpeed = -1 * self.xSpeed
             if abs(self.xSpeed) < 10:
                 self.xSpeed *= 1.2
+                self.ySpeed *= 1.2
         if self.x < 0:
             return 1
         if self.x > WIDTH:
@@ -384,20 +390,42 @@ class Snake():
         self.screen = screen
         self.snake = [Segment(3, 20, screen)]
         self.direction = None
-    def update(self, pressed_keys):
-        if pressed_keys[K_RIGHT]:
+    def update(self, pressed_keys, apple):
+        output = 0
+        if pressed_keys[K_RIGHT] and self.direction != "left":
             self.direction = "right"
-        if pressed_keys[K_LEFT]:
+        if pressed_keys[K_LEFT] and self.direction != "right":
             self.direction = "left"
-        if pressed_keys[K_DOWN]:
+        if pressed_keys[K_DOWN] and self.direction != "up":
             self.direction = "down"
-        if pressed_keys[K_UP]:
+        if pressed_keys[K_UP] and self.direction != "down":
             self.direction = "up"
-        print(self.direction)
+        newY = self.snake[0].y
+        newX = self.snake[0].x
+        if self.direction == "up":
+            newY = self.snake[0].y - 1
+        if self.direction == "down":
+            newY = self.snake[0].y + 1
+        if self.direction == "left":
+            newX = self.snake[0].x - 1
+        if self.direction == "right":
+            newX = self.snake[0].x + 1
+        
+        if newX > 40 or newX < 0 or newY < 0 or newY > 40:
+            print(f"{newX}, {newY}")
+            output = -1
+        
+        for i in self.snake[1:]:
+            if i.x == newX and i.y == newY:
+                output =  -1
 
+        if apple.x == newX and apple.y == newY:
+            self.snake.append(Segment(-100, -100, self.screen))
+            output = 1
         
         for i in self.snake:
-            i.update(i.x, i.y)
+            newX, newY = i.update(newX, newY) 
+        return output
 
 class Apple():
     def __init__(self, screen):
@@ -419,14 +447,16 @@ class Segment():
         self.y = y
         self.screen = screen
     def update(self, newX, newY):
+        oldX = self.x
+        oldY = self.y
         self.x = newX
         self.y = newY
         surf = pygame.Surface((9, 9))
         surf.fill((255, 0, 0))
         rect = surf.get_rect(center = (self.x * 10 + 245, self.y * 10 + 30))
         self.screen.blit(surf, rect)
+        return oldX, oldY
 
-fps = 60
 fpsClock = pygame.time.Clock()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 buttons = []
@@ -449,8 +479,8 @@ TTTGameOver = False
 snakeBoard = SnakeBoard(screen)
 connect4 = C4Board(screen)
 
-p1 = PongPlayer(40, 220, screen)
-p2 = PongPlayer(760, 220, screen)
+p1 = PongPlayer(40, 220, screen, 1)
+p2 = PongPlayer(760, 220, screen, 2)
 pongBall = PongBall(screen)
 
 connect4Over = 0
@@ -459,9 +489,11 @@ snakePlayer = Snake(screen)
 apple = Apple(screen)
 
 RPSGameOver = False
-
+snakeGameOver = False
+snakeScore = 0
 
 while running:
+    fps = 60
     pygame.draw.rect(screen, (0, 0, 0), (0, 0, WIDTH, HEIGHT))
     pygame.display.set_caption(running)
     for event in pygame.event.get():
@@ -596,13 +628,49 @@ while running:
             lives2TextRect.midright = (780, 15)
             screen.blit(lives2Text, lives2TextRect)
             
-            p1.update(pygame.key.get_pressed(), pongBall)
+            p1.update(pygame.key.get_pressed())
             p2.update(pygame.key.get_pressed())
         if running == buttonNames[4]:
+            if snakeGameOver:
+                if pygame.key.get_pressed()[K_r]:
+                    snakePlayer = Snake(screen)
+                    apple = Apple(screen)
+                    snakeGameOver = False
+                    snakeScore = 0
+                    continue
+
+                gameOverText = font.render(f'Game Over', True, (255, 0, 0))
+                gameOverTextRect = gameOverText.get_rect()
+                gameOverTextRect.center = (WIDTH // 2, HEIGHT // 2 - 80)
+                screen.blit(gameOverText, gameOverTextRect)
+
+                playAgainText = font.render(f'Press R to restart', True, (255, 0, 0))
+                playAgainTextRect = playAgainText.get_rect()
+                playAgainTextRect.center = (WIDTH // 2, HEIGHT // 2 - 40)
+                screen.blit(playAgainText, playAgainTextRect)
+
+                scoreText = font.render(f'Score: {snakeScore}', True, (0, 0, 255))
+                scoreTextRect = scoreText.get_rect()
+                scoreTextRect.center = (WIDTH // 2, HEIGHT // 2)
+                screen.blit(scoreText, scoreTextRect)
+                pygame.display.flip()
+                fpsClock.tick(fps)
+                continue
+            fps = 10
             pressed_keys = pygame.key.get_pressed()
             snakeBoard.update()
-            snakePlayer.update(pressed_keys)
-            apple.update()
+            out = snakePlayer.update(pressed_keys, apple)
+            scoreText = font.render(f'Score: {snakeScore}', True, (0, 0, 255))
+            scoreTextRect = scoreText.get_rect(center = (WIDTH // 2 + 40, 10))
+            screen.blit(scoreText, scoreTextRect)
+            if out == -1:
+                snakeGameOver = True
+                continue
+            if out == 1:
+                snakeScore += 1
+                apple.update(1)
+            else:
+                apple.update()
         if running == buttonNames[5]:
             if gameOver:
                 if pygame.key.get_pressed()[K_r]:
