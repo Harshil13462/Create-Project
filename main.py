@@ -419,8 +419,7 @@ class Snake():
         if self.direction == "right":
             newX = self.snake[0].x + 1
         
-        if newX > 40 or newX < 0 or newY < 0 or newY > 40:
-            print(f"{newX}, {newY}")
+        if newX > 39 or newX < 0 or newY < 0 or newY > 38:
             output = -1
         
         for i in self.snake[1:]:
@@ -491,7 +490,6 @@ connect4 = C4Board(screen)
 p1 = PongPlayer(40, 220, screen, 1)
 p2 = PongPlayer(760, 220, screen, 2)
 pongBall = PongBall(screen)
-flag = False
 connect4Over = 0
 
 snakePlayer = Snake(screen)
@@ -665,11 +663,7 @@ while running:
                 pygame.display.flip()
                 fpsClock.tick(fps)
                 continue
-            if pygame.key.get_pressed()[K_SPACE]:
-                flag = True
             fps = 10
-            if flag:
-                fps = 1
             pressed_keys = pygame.key.get_pressed()
             snakeBoard.update()
             out = snakePlayer.update(pressed_keys, apple)
@@ -769,7 +763,8 @@ while running:
 
             connect4Over = connect4.update()
 
-        
+    if pygame.key.get_pressed()[K_TAB]:
+        fps *= 6
     pygame.display.flip()
     fpsClock.tick(fps)
 
